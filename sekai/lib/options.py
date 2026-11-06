@@ -239,6 +239,15 @@ class Options:
         max=1,
         step=0.1,
     )
+    note_lean: float = slider_option(
+        name="Note Lean",
+        category=graphics,
+        scope="Rush",
+        default=1,
+        min=0,
+        max=1,
+        step=0.05,
+    )
     sfx_enabled: bool = toggle_option(
         name=StandardText.EFFECT,
         category=audio,

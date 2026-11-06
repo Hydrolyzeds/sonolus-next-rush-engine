@@ -1333,6 +1333,24 @@ def perspective_edge_factors(t: float, b: float, travel: float, p: float) -> tup
     return depth_b, depth_t, wb, wt
 
 
+NOTE_LEAN_Q = 0.8
+NOTE_LEAN_STRETCH = 0.16
+NOTE_LEAN_MIN_DEN = 0.25
+
+
+def note_lean_edge(edge: float) -> tuple[float, float]:
+    d = edge - 1
+    q = 1 / max(NOTE_LEAN_MIN_DEN, 1 + d * NOTE_LEAN_Q * Options.note_lean)
+    return 1 + d * (1 + NOTE_LEAN_STRETCH * Options.note_lean) * q, q
+
+
+def note_body_edge_factors(t: float, b: float, travel: float) -> tuple[float, float, float, float]:
+    _, _, wb, wt = perspective_edge_factors(t, b, travel, Options.note_perspective)
+    b_lean, qb = note_lean_edge(b)
+    t_lean, qt = note_lean_edge(t)
+    return tilt_depth(b_lean, travel), tilt_depth(t_lean, travel), wb * qb, wt * qt
+
+
 def perspective_rect(l, r, t, b, travel=1.0, p=1.0):
     depth_b, depth_t, wb, wt = perspective_edge_factors(t, b, travel, p)
     return transform_quad(
@@ -1852,7 +1870,15 @@ def layout_fallback_judge_line() -> Quad:
 
 
 def layout_note_body_by_edges(l: float, r: float, h: float, travel: float):
-    return perspective_rect(l=l, r=r, t=1 - h, b=1 + h, travel=travel, p=Options.note_perspective)
+    depth_b, depth_t, wb, wt = note_body_edge_factors(1 - h, 1 + h, travel)
+    return transform_quad(
+        Quad(
+            bl=Vec2(l * wb, depth_b),
+            br=Vec2(r * wb, depth_b),
+            tl=Vec2(l * wt, depth_t),
+            tr=Vec2(r * wt, depth_t),
+        )
+    )
 
 
 def layout_note_body_slices_by_edges(
@@ -1864,7 +1890,7 @@ def layout_note_body_slices_by_edges(
         l = r = m
     ml = min(l + edge_w, m)
     mr = max(r - edge_w, m)
-    depth_b, depth_t, wb, wt = perspective_edge_factors(1 - h, 1 + h, travel, Options.note_perspective)
+    depth_b, depth_t, wb, wt = note_body_edge_factors(1 - h, 1 + h, travel)
     left = Quad(
         bl=transform_vec(Vec2(l * wb, depth_b)),
         br=transform_vec(Vec2(ml * wb, depth_b)),
